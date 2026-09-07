@@ -1,0 +1,494 @@
+openapi: 3.0.0
+info:
+  title: Inventory Management System API
+  description: Enterprise-grade RESTful API for inventory, products, stock ledger, and category operations.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: accessToken
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation completed successfully
+        data:
+          type: object
+
+    Product:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 66f00112233445566778899a
+        name:
+          type: string
+          example: MacBook Pro M3 Max
+        sku:
+          type: string
+          example: MBP-M3-16-001
+        category:
+          type: object
+          properties:
+            _id:
+              type: string
+            name:
+              type: string
+        quantity:
+          type: integer
+          example: 18
+        unitPrice:
+          type: number
+          example: 2499.99
+        supplierName:
+          type: string
+          example: Apple Global Supplies
+        lowStockThreshold:
+          type: integer
+          example: 10
+        status:
+          type: string
+          enum: [IN_STOCK, LOW_STOCK, OUT_OF_STOCK]
+          example: IN_STOCK
+        barcode:
+          type: string
+          example: MBP-M3-16-001
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    InventoryTransaction:
+      type: object
+      properties:
+        _id:
+          type: string
+        product:
+          type: string
+        type:
+          type: string
+          enum: [IN, OUT]
+        quantity:
+          type: integer
+        previousQuantity:
+          type: integer
+        newQuantity:
+          type: integer
+        note:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+  - cookieAuth: []
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  example: Jane Doe
+                email:
+                  type: string
+                  example: jane@example.com
+                password:
+                  type: string
+                  example: SecurePass123!
+                role:
+                  type: string
+                  enum: [ADMIN, USER]
+      responses:
+        201:
+          description: User registered successfully
+        400:
+          description: Validation error
+        409:
+          description: Email already registered
+
+  /auth/login:
+    post:
+      summary: Login user and receive session cookie + JWT
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  example: admin@inventory.com
+                password:
+                  type: string
+                  example: Admin123!
+      responses:
+        200:
+          description: Login successful
+        401:
+          description: Invalid credentials
+
+  /auth/me:
+    get:
+      summary: Get currently authenticated user profile
+      tags: [Authentication]
+      responses:
+        200:
+          description: Current user profile
+        401:
+          description: Unauthorized
+
+  /auth/logout:
+    post:
+      summary: Clear session cookie and logout
+      tags: [Authentication]
+      responses:
+        200:
+          description: Logged out successfully
+
+  /dashboard:
+    get:
+      summary: Get aggregated inventory statistics and analytics
+      tags: [Dashboard]
+      responses:
+        200:
+          description: Dashboard metrics successfully retrieved
+
+  /products:
+    get:
+      summary: List products with pagination, search, status, and category filtering
+      tags: [Products]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [IN_STOCK, LOW_STOCK, OUT_OF_STOCK]
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [name, quantity, unitPrice, createdAt]
+        - in: query
+          name: sortOrder
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        200:
+          description: List of products with pagination metadata
+    post:
+      summary: Create a new inventory product
+      tags: [Products]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, sku, category, quantity, unitPrice, supplierName]
+              properties:
+                name:
+                  type: string
+                sku:
+                  type: string
+                category:
+                  type: string
+                description:
+                  type: string
+                quantity:
+                  type: integer
+                  minimum: 0
+                unitPrice:
+                  type: number
+                  minimum: 0.01
+                supplierName:
+                  type: string
+                lowStockThreshold:
+                  type: integer
+                  default: 10
+      responses:
+        201:
+          description: Product created successfully
+        409:
+          description: SKU already exists
+
+  /products/{id}:
+    get:
+      summary: Get product details by ID
+      tags: [Products]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Product details
+        404:
+          description: Product not found
+    patch:
+      summary: Update product details
+      tags: [Products]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        200:
+          description: Product updated successfully
+    delete:
+      summary: Delete product (Admin only)
+      tags: [Products]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Product deleted successfully
+
+  /products/export/csv:
+    get:
+      summary: Export filtered products to CSV download
+      tags: [Products]
+      responses:
+        200:
+          description: CSV file download
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /products/import/csv:
+    post:
+      summary: Bulk import products via CSV file upload (Admin only)
+      tags: [Products]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: Import results summary
+
+  /categories:
+    get:
+      summary: List all categories with product counts
+      tags: [Categories]
+      responses:
+        200:
+          description: List of categories
+    post:
+      summary: Create new category
+      tags: [Categories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        201:
+          description: Category created
+        409:
+          description: Category name already exists
+
+  /categories/{id}:
+    get:
+      summary: Get category by ID
+      tags: [Categories]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Category details
+    patch:
+      summary: Update category
+      tags: [Categories]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        200:
+          description: Category updated
+    delete:
+      summary: Delete category (Admin only; prevented if linked products exist)
+      tags: [Categories]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Category deleted
+        400:
+          description: Cannot delete category with linked products
+
+  /inventory/{productId}/adjust:
+    post:
+      summary: Adjust inventory stock level with automatic audit log
+      tags: [Inventory]
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, quantity]
+              properties:
+                type:
+                  type: string
+                  enum: [IN, OUT]
+                quantity:
+                  type: integer
+                  minimum: 1
+                note:
+                  type: string
+      responses:
+        200:
+          description: Stock adjusted successfully
+        400:
+          description: Insufficient stock (cannot drop below 0)
+
+  /inventory/{productId}/history:
+    get:
+      summary: Get inventory movement history for a product
+      tags: [Inventory]
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Product stock ledger history
+
+  /inventory/transactions:
+    get:
+      summary: Get all global inventory transactions
+      tags: [Inventory]
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [IN, OUT]
+      responses:
+        200:
+          description: Paginated transaction list
