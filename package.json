@@ -1,0 +1,32 @@
+{
+  "name": "inventory-management-system",
+  "version": "1.0.0",
+  "description": "Enterprise-Grade Scalable Inventory Management System",
+  "private": true,
+  "scripts": {
+    "dev:server": "node init && npm --prefix server run dev",
+    "dev:client": "node init && npm --prefix client run dev",
+    "dev": "node init && concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build:server": "node init && npm --prefix server run build",
+    "build:client": "node init && npm --prefix client run build",
+    "build": "node init && npm run build:server && npm run build:client",
+    "seed": "npm --prefix server run seed",
+    "test:server": "npm --prefix server run test",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "dotenv": "^8.2.0",
+    "node-fetch": "^3.3.2"
+  },
+  "keywords": [
+    "inventory",
+    "management",
+    "mern",
+    "typescript",
+    "react",
+    "express"
+  ],
+  "author": "Antigravity Engineer",
+  "license": "MIT"
+}
